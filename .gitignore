@@ -2,6 +2,9 @@
 *.apk
 *.ap_
 
+# we have an apk inside our assets directory we would like to retain
+!assets/HelloActivity.apk
+
 # files for the dex VM
 *.dex
 
