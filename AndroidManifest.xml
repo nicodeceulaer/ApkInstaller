@@ -4,7 +4,11 @@
 	android:versionCode="1"
 	android:versionName="1.0">
 
+    <uses-permission android:name="android.permission.INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.DELETE_PACKAGES" />
+
 	<application>
+
 		<activity
 			android:name=".Main"
 			android:label="Installer">
@@ -13,15 +17,16 @@
 				<category android:name="android.intent.category.LAUNCHER"/>
 			</intent-filter>
 		</activity>
-	</application>
 
-    <provider
-        android:name="com.commonsware.android.installer2.FileProvider"
-        android:authorities="com.commonsware.android.installer2"
-        android:grantUriPermissions="true"
-        android:exported="true">
-        <meta-data
-            android:name="android.support.FILE_PROVIDER_PATHS"
-            android:resource="@xml/filepaths" />
-    </provider>
+        <provider
+            android:name="com.commonsware.android.installer2.FileProvider"
+            android:authorities="com.commonsware.android.installer2"
+            android:grantUriPermissions="true"
+            android:exported="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/filepaths" />
+        </provider>
+
+	</application>
 </manifest>

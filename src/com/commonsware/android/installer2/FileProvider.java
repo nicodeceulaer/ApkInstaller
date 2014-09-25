@@ -57,8 +57,7 @@ public class FileProvider extends ContentProvider {
         super.attachInfo(context, info);
 
         // Sanity check our security
-/*
-        if (info.exported) {
+/*     if (info.exported) {
             throw new SecurityException("Provider must not be exported");
         }*/
         if (!info.grantUriPermissions) {
@@ -205,11 +204,10 @@ public class FileProvider extends ContentProvider {
     private static PathStrategy parsePathStrategy(Context context, String authority)
             throws IOException, XmlPullParserException {
         final SimplePathStrategy strat = new SimplePathStrategy(authority);
+        final PackageManager     pm    = context.getPackageManager();
+        final ProviderInfo       info  = pm.resolveContentProvider(authority, PackageManager.GET_META_DATA);
 
-        final ProviderInfo info = context.getPackageManager()
-                .resolveContentProvider(authority, PackageManager.GET_META_DATA);
-        final XmlResourceParser in = info.loadXmlMetaData(
-                context.getPackageManager(), META_DATA_FILE_PROVIDER_PATHS);
+        final XmlResourceParser in = info.loadXmlMetaData( pm, META_DATA_FILE_PROVIDER_PATHS);
         if (in == null) {
             throw new IllegalArgumentException(
                     "Missing " + META_DATA_FILE_PROVIDER_PATHS + " meta-data");
@@ -292,6 +290,7 @@ public class FileProvider extends ContentProvider {
             Map.Entry<String, File> mostSpecific = null;
             for (Map.Entry<String, File> root : mRoots.entrySet()) {
                 final String rootPath = root.getValue().getPath();
+                Log.i(TAG, "getUriForFile looking at root " + rootPath );
                 if (path.startsWith(rootPath) && (mostSpecific == null
                         || rootPath.length() > mostSpecific.getValue().getPath().length())) {
                     mostSpecific = root;

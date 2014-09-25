@@ -17,6 +17,8 @@ package com.commonsware.android.installer2;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.IPackageInstallObserver;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -29,17 +31,28 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-
-
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 
 public class Main extends Activity {
     static final int REQUEST_INSTALL = 1;
     static final int REQUEST_UNINSTALL = 2;
     static final String TAG = "InstallApk";
 
+    private PackageManager mPackageManager;
+    private TvApkInstallerInstallObserver mInstallObserver;
+
     @Override
     public void onCreate(Bundle icicle) {
         super.onCreate(icicle);
+
+        if( mPackageManager == null ) {
+            mPackageManager = getPackageManager();
+        }
+
+        if( mInstallObserver == null ) {
+            mInstallObserver = new TvApkInstallerInstallObserver();
+        }
 
         Log.i(TAG, "onCreate" );
         setContentView(R.layout.activity_main);
@@ -55,6 +68,10 @@ public class Main extends Activity {
         button.setOnClickListener(mUninstallListener);
         button = (Button)findViewById(R.id.uninstall_result);
         button.setOnClickListener(mUninstallResultListener);
+        button = (Button) findViewById(R.id.providerInstall);
+        button.setOnClickListener(mFileProviderInstallListener);
+        button = (Button) findViewById( R.id.fileUriInstall);
+        button.setOnClickListener(mFileUriInstallListener);
     }
 
     @Override
@@ -137,6 +154,87 @@ public class Main extends Activity {
         }
     };
 
+    private OnClickListener mFileProviderInstallListener = new OnClickListener() {
+        public void onClick(View v) {
+            Log.i(TAG, "mFileProviderInstallListener");
+            ProviderInstallApk("HelloActivity.apk");
+        }
+    };
+
+    private OnClickListener mFileUriInstallListener = new OnClickListener() {
+        public void onClick(View v) {
+            Log.i(TAG, "mFileUrlInstallListener" );
+            FileUriInstallApk("HelloActivity.apk");
+        }
+    };
+
+    /**  install using package manager, use content provider URL
+     *   this currently does NOT work, due to InstallPackageManager not allowing anything but file:// URI's
+     */
+    private void ProviderInstallApk(String apk_name )  {
+        File newfile = prepareApk("HelloActivity.apk");
+
+        if( !newfile.exists() ){
+            Log.i(TAG, "file does not exist " + newfile );
+            return;
+        }
+        Log.i(TAG, "get a URI for file " + newfile.getAbsolutePath() );
+        Uri contentUri = FileProvider.getUriForFile(this, "com.commonsware.android.installer2", newfile);
+
+        Log.i(TAG, "Install apk - contentUri: " + contentUri );
+
+        Class<?>[] types = new Class[] {Uri.class, IPackageInstallObserver.class, int.class, String.class};
+        Method method = null;
+        try {
+            method = mPackageManager.getClass().getMethod("installPackage", types);
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+            return;
+        }
+
+        try {
+            method.invoke(mPackageManager, new Object[] { contentUri, mInstallObserver, 0, this.getPackageName() } );
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            e.printStackTrace();
+        }
+
+        // only works on platform development env
+        // mPackageManager.installPackage(contentUri, mInstallObserver, 0, this.getPackageName());
+    }
+
+    private void FileUriInstallApk(String apk_name )  {
+        File newfile = prepareApk("HelloActivity.apk");
+
+        if( !newfile.exists() ){
+            Log.i(TAG, "file does not exist " + newfile );
+            return;
+        }
+        Log.i(TAG, "get a URI for file " + newfile.getAbsolutePath() );
+        Uri contentUri = Uri.fromFile(newfile);
+        Log.i(TAG, "Install apk - contentUri: " + contentUri );
+
+        // only works on platform development env
+        // mPackageManager.installPackage(contentUri, mInstallObserver, 0, this.getPackageName());
+        Class<?>[] types = new Class[] {Uri.class, IPackageInstallObserver.class, int.class, String.class};
+        Method method = null;
+        try {
+            method = mPackageManager.getClass().getMethod("installPackage", types);
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+            return;
+        }
+
+        try {
+            method.invoke(mPackageManager, new Object[] { contentUri, mInstallObserver, 0, this.getPackageName() } );
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            e.printStackTrace();
+        }
+    }
+
     private File prepareApk(String assetName) {
         Log.i(TAG, "prepareApk " + assetName );
         // Copy the given asset out into a file so that it can be installed.
@@ -170,5 +268,18 @@ public class Main extends Activity {
         }
 
         return getFileStreamPath("tmp.apk");
+    }
+
+    class TvApkInstallerInstallObserver extends IPackageInstallObserver.Stub
+    {
+        @Override
+        public void packageInstalled(String packageName, int returnCode)
+        {
+            if( packageName == null){
+                Log.i(TAG, "Packagename was null ?? " );
+                packageName = "unknown package";
+            }
+            Log.i(TAG, "packageInstalled - packageName=" + packageName + ", returnCode=" + returnCode);
+        }
     }
 }
