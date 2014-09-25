@@ -28,12 +28,17 @@ android:layout_width="match_parent" android:layout_height="match_parent">
 
     <Button android:id="@+id/providerInstall"
         android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:text="InstallPackageManager install using fileprovider uri">
+        android:text="PackageManager install using fileprovider uri">
     </Button>
 
     <Button android:id="@+id/fileUriInstall"
         android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:text="InstallPackageManager install using file:// uri">
+        android:text="PackageManager install using file:// uri">
+    </Button>
+
+    <Button android:id="@+id/externalFileUriInstall"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="external apk, PackageManager install, file:// uri">
     </Button>
 
     <Button android:id="@+id/unknown_source"

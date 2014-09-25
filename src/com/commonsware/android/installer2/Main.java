@@ -19,6 +19,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.IPackageInstallObserver;
+import android.content.res.AssetManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -33,11 +34,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.List;
 
 public class Main extends Activity {
     static final int REQUEST_INSTALL = 1;
     static final int REQUEST_UNINSTALL = 2;
     static final String TAG = "InstallApk";
+
+    static final String ASSET_PACKAGE_NAME = "org.droidtv.apkstorage";
+    static final String APK_TO_INSTALL     = "HelloActivity.apk";
 
     private PackageManager mPackageManager;
     private TvApkInstallerInstallObserver mInstallObserver;
@@ -72,6 +78,8 @@ public class Main extends Activity {
         button.setOnClickListener(mFileProviderInstallListener);
         button = (Button) findViewById( R.id.fileUriInstall);
         button.setOnClickListener(mFileUriInstallListener);
+        button = (Button) findViewById( R.id.externalFileUriInstall );
+        button.setOnClickListener(mExtFileUriInstallListener);
     }
 
     @Override
@@ -101,7 +109,7 @@ public class Main extends Activity {
         public void onClick(View v) {
             Log.i(TAG, "mUnknownSourceListener");
             Intent intent = new Intent(Intent.ACTION_INSTALL_PACKAGE);
-            intent.setData(Uri.fromFile(prepareApk("HelloActivity.apk")));
+            intent.setData(Uri.fromFile(prepareApk( APK_TO_INSTALL, null ) ) );
             startActivity(intent);
         }
     };
@@ -110,7 +118,7 @@ public class Main extends Activity {
         public void onClick(View v) {
             Log.i(TAG, "mMySourceListener");
             Intent intent = new Intent(Intent.ACTION_INSTALL_PACKAGE);
-            intent.setData(Uri.fromFile(prepareApk("HelloActivity.apk")));
+            intent.setData(Uri.fromFile( prepareApk( APK_TO_INSTALL, null ) ) );
             intent.putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true);
             intent.putExtra(Intent.EXTRA_RETURN_RESULT, true);
             intent.putExtra(Intent.EXTRA_INSTALLER_PACKAGE_NAME,
@@ -123,7 +131,7 @@ public class Main extends Activity {
         public void onClick(View v) {
             Log.i(TAG, "mReplaceListener");
             Intent intent = new Intent(Intent.ACTION_INSTALL_PACKAGE);
-            intent.setData(Uri.fromFile(prepareApk("HelloActivity.apk")));
+            intent.setData(Uri.fromFile(prepareApk( APK_TO_INSTALL, null ) ) );
             intent.putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true);
             intent.putExtra(Intent.EXTRA_RETURN_RESULT, true);
             intent.putExtra(Intent.EXTRA_ALLOW_REPLACE, true);
@@ -164,15 +172,22 @@ public class Main extends Activity {
     private OnClickListener mFileUriInstallListener = new OnClickListener() {
         public void onClick(View v) {
             Log.i(TAG, "mFileUrlInstallListener" );
-            FileUriInstallApk("HelloActivity.apk");
+            FileUriInstallApk(APK_TO_INSTALL);
+        }
+    };
+
+    private OnClickListener mExtFileUriInstallListener = new OnClickListener() {
+        public void onClick(View v) {
+            Log.i(TAG, "mExtFileUrlInstallListener" );
+            ExternalFileUriInstallApk( APK_TO_INSTALL, ASSET_PACKAGE_NAME );
         }
     };
 
     /**  install using package manager, use content provider URL
      *   this currently does NOT work, due to InstallPackageManager not allowing anything but file:// URI's
      */
-    private void ProviderInstallApk(String apk_name )  {
-        File newfile = prepareApk("HelloActivity.apk");
+    private void ProviderInstallApk(String apkName )  {
+        File newfile = prepareApk(apkName, null );
 
         if( !newfile.exists() ){
             Log.i(TAG, "file does not exist " + newfile );
@@ -204,15 +219,14 @@ public class Main extends Activity {
         // mPackageManager.installPackage(contentUri, mInstallObserver, 0, this.getPackageName());
     }
 
-    private void FileUriInstallApk(String apk_name )  {
-        File newfile = prepareApk("HelloActivity.apk");
-
-        if( !newfile.exists() ){
-            Log.i(TAG, "file does not exist " + newfile );
+    private void FileInstallApk( String packageName, File apkFile )
+    {
+        if( !apkFile.exists() ){
+            Log.i(TAG, "file does not exist " + apkFile );
             return;
         }
-        Log.i(TAG, "get a URI for file " + newfile.getAbsolutePath() );
-        Uri contentUri = Uri.fromFile(newfile);
+        Log.i(TAG, "get a URI for file " + apkFile.getAbsolutePath() );
+        Uri contentUri = Uri.fromFile( apkFile );
         Log.i(TAG, "Install apk - contentUri: " + contentUri );
 
         // only works on platform development env
@@ -235,15 +249,66 @@ public class Main extends Activity {
         }
     }
 
-    private File prepareApk(String assetName) {
+    // install an apk we get from within our own assets,
+    // using a file:// URI
+    private void FileUriInstallApk(String apkName )  {
+        ExternalFileUriInstallApk( apkName, null);
+    }
+
+    // install an apk we get from another app's assets
+    // using a file:// URI
+    private void ExternalFileUriInstallApk(String apkName, String assetPackageName )  {
+        File newfile = prepareApk( apkName, assetPackageName );
+        FileInstallApk( apkName, newfile );
+    }
+
+    // retrieve a stream handle for an asset from a package
+    private InputStream getApkStream( String assetName, String assetPackageName )
+    {
+        InputStream  is = null;
+        Context      ctx;
+        AssetManager am;
+
+        try {
+            if( assetPackageName == null ) {
+                Log.d( TAG, "use local assets" );
+                ctx = (Context)this;
+            } else {
+                Log.d(TAG, "get assets from package " + assetPackageName );
+                ctx = createPackageContext( assetPackageName, 0);
+            }
+            am = ctx.getAssets();
+
+            // debug code - only needed if you want to work out why we can't find an asset
+            //
+            // String[] filesinApklistfolder = am.list("");
+            // List<String> assetApkList = Arrays.asList(filesinApklistfolder);
+            // for( String virginapp : assetApkList ) {
+            //    Log.i( TAG, "Asset found : " + virginapp );
+            // }
+
+            Log.d(TAG, "retrieving asset " + assetName );
+            is = am.open( assetName );
+        } catch (Exception e ) {
+            Log.e(TAG, "failed getting asset " + assetName + " from package " + assetPackageName );
+            e.printStackTrace();
+        }
+        return is;
+    }
+
+    private File prepareApk(String assetName, String assetPackageName ) {
         Log.i(TAG, "prepareApk " + assetName );
         // Copy the given asset out into a file so that it can be installed.
         // Returns the path to the file.
-        byte[] buffer = new byte[8192];
-        InputStream is = null;
-        FileOutputStream fout = null;
+        byte[]           buffer = new byte[8192];
+        InputStream      is     = null;
+        FileOutputStream fout   = null;
         try {
-            is = getAssets().open(assetName);
+            is = getApkStream( assetName, assetPackageName );
+            if( is == null ) {
+                return null;
+            }
+
             fout = openFileOutput("tmp.apk", Context.MODE_WORLD_READABLE);
             int n;
             while ((n=is.read(buffer)) >= 0) {
