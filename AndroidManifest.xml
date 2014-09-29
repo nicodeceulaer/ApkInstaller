@@ -7,7 +7,8 @@
     <uses-permission android:name="android.permission.INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.DELETE_PACKAGES" />
 
-	<application>
+	<application
+        android:theme="@style/somestylethisis" >
 
 		<activity
 			android:name=".Main"
