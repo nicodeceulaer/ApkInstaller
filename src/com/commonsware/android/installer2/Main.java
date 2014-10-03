@@ -83,62 +83,6 @@ public class Main extends Activity {
         button.setOnClickListener(mExtFileUriInstallListener);
     }
 
-    private int loadLocalPrimaryColor( Context ctx )
-    {
-        TypedValue outValue = new TypedValue();
-        {
-
-            Log.d(TAG, "looking up colorPrimary in local app");
-            Resources.Theme theme = ctx.getTheme();
-            Log.i(TAG, "local app is using theme: " + theme.toString());
-
-            Boolean found = theme.resolveAttribute(android.R.attr.colorPrimary, outValue, true);
-            if (found) {
-                final int color = outValue.data;
-                Log.d(TAG, "color foreground is " + Integer.toHexString(color));
-                //            return color;
-            } else {
-                Log.d(TAG, "colorPrimary not found, applying default");
-                //            return 0xffffffff;
-            }
-        }
-
-        GetThemeResId(ctx);
-
-        {
-            ApplicationInfo appinfo = ctx.getApplicationInfo();
-            if (appinfo == null) {
-                Log.i(TAG, "Application Info could not be retrieved ... ");
-                return 0xffffffff;
-            } else {
-                Log.i(TAG, "Application info retrieved: " + appinfo);
-            }
-
-            int theme_id = appinfo.theme;
-            Log.i(TAG, "theme id = " + theme_id);
-
-            ctx.setTheme(theme_id);
-            Resources.Theme theme = ctx.getTheme();
-            Log.i(TAG, "found a theme: " + theme.toString());
-
-            Boolean found = theme.resolveAttribute(android.R.attr.colorPrimary, outValue, true);
-            if (found) {
-                final int color = outValue.data;
-                Log.d(TAG, "color foreground is " + Integer.toHexString(color));
-                //return color;
-            } else {
-                Log.d(TAG, "colorPrimary not found, applying default");
-                //return 0xffffffff;
-            }
-
-            Log.i(TAG, "found a theme: ");
-            theme.dump(Log.INFO, TAG, "theme");
-            Log.i(TAG, "theme dumping done");
-
-            return 0;
-        }
-    }
-
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent intent) {
          Log.i(TAG, "onActivityResult requestCode=" + requestCode + ", resultCode= " + requestCode);
@@ -330,9 +274,6 @@ public class Main extends Activity {
             if( assetPackageName == null ) {
                 Log.d( TAG, "use local assets" );
                 ctx = (Context)this;
-
-                loadLocalPrimaryColor( ctx );
-
             } else {
                 Log.d(TAG, "get assets from package " + assetPackageName );
                 ctx = createPackageContext( assetPackageName, 0);
